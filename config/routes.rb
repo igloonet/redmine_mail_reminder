@@ -1,5 +1,5 @@
-  resources :mail_reminders do
-    post 'update_interval_values', :on => :collection
+resources :mail_reminders, only: [:index, :create, :update, :destroy] do
+  collection do
+    post :update_interval_values
   end
-
-  resources :query
+end

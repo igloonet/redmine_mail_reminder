@@ -1,5 +1,4 @@
-class ReminderRole < ActiveRecord::Base
-  unloadable
+class ReminderRole < ApplicationRecord
   belongs_to :mail_reminder
   belongs_to :role
 end

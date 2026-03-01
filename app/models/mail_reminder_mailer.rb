@@ -5,22 +5,8 @@ class MailReminderMailer < ActionMailer::Base
   include Redmine::I18n
 
   def self.default_url_options
-    h = Setting.host_name
-    h = h.to_s.gsub(%r{\/.*$}, '') unless Redmine::Utils.relative_url_root.blank?
-    { :host => h, :protocol => Setting.protocol }
-  end
-
-  # Fixed: reminder mails are not sent when delivery_method is :async_smtp (#5058).
-  def self.with_synched_deliveries(&block)
-    saved_method = ActionMailer::Base.delivery_method
-    if m = saved_method.to_s.match(%r{^async_(.+)$})
-      synched_method = m[1]
-      ActionMailer::Base.delivery_method = synched_method.to_sym
-      ActionMailer::Base.send "#{synched_method}_settings=", ActionMailer::Base.send("async_#{synched_method}_settings")
-    end
-    yield
-  ensure
-    ActionMailer::Base.delivery_method = saved_method
+    h = Setting.host_name.to_s.gsub(%r{/.*$}, '')
+    { host: h, protocol: Setting.protocol }
   end
 
   def issues_reminder(user, queries_data)
@@ -28,15 +14,12 @@ class MailReminderMailer < ActionMailer::Base
     @queries_data = []
     queries_data.each do |project, query|
       query.project = project
-      issues = query.issues(:include => [:assigned_to, :tracker, :priority, :category, :fixed_version])
+      issues = query.issues
       @queries_data << [project, query, issues] if issues.any?
     end
 
-    # Not Sending email if there are no issues
-    original_delivery_method = ActionMailer::Base.delivery_method
-    if @queries_data.empty?
-      ActionMailer::Base.delivery_method = :test
-    end
+    # Skip sending if no issues match any query
+    return if @queries_data.empty?
 
     headers['X-Mailer'] = 'Redmine'
     headers['X-Redmine-Host'] = Setting.host_name
@@ -46,10 +29,11 @@ class MailReminderMailer < ActionMailer::Base
     headers['From'] = Setting.mail_from
     headers['List-Id'] = "<#{Setting.mail_from.to_s.gsub('@', '.')}>"
 
-    set_language_if_valid user.language
-    mail :to => user.mail,
-      :from => Setting.mail_from,
-      :subject => Setting.plugin_redmine_mail_reminder['issue_reminder_mail_subject'] || "Issue Reminder"
-    ActionMailer::Base.delivery_method = original_delivery_method
+    set_language_if_valid(user.language)
+    mail(
+      to: user.mail,
+      from: Setting.mail_from,
+      subject: Setting.plugin_redmine_mail_reminder['issue_reminder_mail_subject'].presence || 'Issue Reminder'
+    )
   end
 end

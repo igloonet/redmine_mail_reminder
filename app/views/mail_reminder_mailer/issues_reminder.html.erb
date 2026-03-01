@@ -1,41 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
-<% headers[:skip_premailer] = nil if headers[:skip_premailer] %>
-<%= stylesheet_link_tag '/stylesheets/application', 'jquery/jquery-ui-1.11.0', 'application', :media => 'all' %>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
 </head>
 <body>
 <% if Setting.plugin_redmine_mail_reminder['issue_reminder_mail_header'].present? %>
-    <span class="header"><%= Redmine::WikiFormatting.to_html(Setting.text_formatting, Setting.plugin_redmine_mail_reminder['issue_reminder_mail_header']).html_safe %></span>
+  <div class="header"><%= Redmine::WikiFormatting.to_html(Setting.text_formatting, Setting.plugin_redmine_mail_reminder['issue_reminder_mail_header']).html_safe %></div>
 <% end %>
 <% @queries_data.each do |project, query, issues| %>
-    <h1><%= "#{project.name}: #{query.name}" %></h1>
-    <table class="list issues">
-        <thead>
-            <tr>
-                <% query.columns.each do |col| %>
-                    <th><%= col.caption %></th>
-                <% end %>
-            </tr>
-        </thead>
-        <tbody>
-        <% issues.each do |issue| %>
-            <tr id="issue-<%= issue.id %>" class="<%= cycle('odd', 'even') %> <%= issue.css_classes %>">
-                <% query.columns.each do |column| %> 
-                    <td class=\"<%= "#{column.css_classes}" %>\"><%= raw "#{content_for_column(column, issue)}" %></td>
-                <% end %>
-            </tr>
+  <h1><%= "#{project.name}: #{query.name}" %></h1>
+  <table class="list issues" style="border-collapse: collapse; width: 100%;">
+    <thead>
+      <tr>
+        <% query.columns.each do |col| %>
+          <th style="text-align: left; padding: 4px; border-bottom: 1px solid #ccc;"><%= col.caption %></th>
         <% end %>
-        </tbody>
-    </table>
+      </tr>
+    </thead>
+    <tbody>
+    <% issues.each_with_index do |issue, idx| %>
+      <tr class="<%= idx.even? ? 'even' : 'odd' %> <%= issue.css_classes %>" style="<%= idx.even? ? '' : 'background-color: #f6f7f8;' %>">
+        <% query.columns.each do |column| %>
+          <td style="padding: 4px;"><%= content_for_column(column, issue) %></td>
+        <% end %>
+      </tr>
+    <% end %>
+    </tbody>
+  </table>
 <% end %>
-<% if Setting.plugin_redmine_mail_reminder['issue_reminder_mail_footer'].present? -%>
-<br>
-<hr>
-<i style="font-size: 12px;">
-    <span class="footer"><%= Redmine::WikiFormatting.to_html(Setting.text_formatting, Setting.plugin_redmine_mail_reminder['issue_reminder_mail_footer']).html_safe %></span>
-</i>
-<% end -%>
+<% if Setting.plugin_redmine_mail_reminder['issue_reminder_mail_footer'].present? %>
+  <br><hr>
+  <i style="font-size: 12px;">
+    <div class="footer"><%= Redmine::WikiFormatting.to_html(Setting.text_formatting, Setting.plugin_redmine_mail_reminder['issue_reminder_mail_footer']).html_safe %></div>
+  </i>
+<% end %>
 </body>
 </html>

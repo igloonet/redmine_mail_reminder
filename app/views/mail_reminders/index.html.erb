@@ -11,25 +11,26 @@
     </thead>
     <tbody>
     <% @reminders.each do |reminder| %>
-        <tr>
-            <td><%= link_to(h(reminder.query.name), :controller => 'queries', :action => 'edit', :id => reminder.query) %></td>
-            <td><%= reminder.roles.collect {|r| r.name}.join(',') %></td>
-            <td><%= MailReminder.interval_value_display(reminder.interval,reminder.interval_value) %></td>
-            <td class="buttons">
-                <%= link_to_function l(:button_edit), "$('#reminder-#{reminder.id}-edit').show()", :class => 'icon icon-edit' %>
-                <%= link_to l(:button_delete),
-                    {:controller => 'mail_reminders', :action => :destroy, :id => reminder},
-                    {:confirm => l(:reminder_delete_confirmation), :method => :delete, :remote => true,
-                     :title => l(:button_delete), :class => 'icon icon-del'} %>
-            </td>
-        </tr>
-        <tr id="reminder-<%= reminder.id %>-edit" style="display:none">
-            <td>&nbsp;</td>
-            <td class="description" colspan="2">
-                <%= render :partial => 'form', :locals => { :reminder => reminder, :project => @project, :action => :update } %>
-            </td>
-            <td>&nbsp;</td>
-        </tr>
+      <tr>
+        <td><%= link_to(h(reminder.query.name), edit_query_path(reminder.query)) %></td>
+        <td><%= reminder.roles.collect(&:name).join(', ') %></td>
+        <td><%= MailReminder.interval_value_display(reminder.interval, reminder.interval_value) %></td>
+        <td class="buttons">
+          <a href="#" onclick="document.getElementById('reminder-<%= reminder.id %>-edit').style.display='table-row'; return false;" class="icon icon-edit"><%= l(:button_edit) %></a>
+          <%= link_to l(:button_delete),
+              project_mail_reminder_path(@project, reminder),
+              method: :delete,
+              data: { confirm: l(:reminder_delete_confirmation) },
+              class: 'icon icon-del' %>
+        </td>
+      </tr>
+      <tr id="reminder-<%= reminder.id %>-edit" style="display:none">
+        <td>&nbsp;</td>
+        <td class="description" colspan="2">
+          <%= render partial: 'form', locals: { reminder: reminder, project: @project, action: :update } %>
+        </td>
+        <td>&nbsp;</td>
+      </tr>
     <% end %>
     </tbody>
   </table>
@@ -38,27 +39,34 @@
 <div class="splitcontentright">
   <fieldset>
     <legend><%= l(:new_reminder) %></legend>
-    <%= render :partial => 'form', :locals => { :reminder => @reminder, :project => @project } %>
+    <%= render partial: 'form', locals: { reminder: @reminder, project: @project } %>
   </fieldset>
 </div>
 
-<script type="text/javascript">
-  (function( $ ){
-    $(function() {
-      Element = function(){}
-      Element.update = function(id,html){$('#'+id).html(html);}
-      $('div[id^=reminder_interval-] select').change(function(event){
-        val = $(this).val();
-        reminder = $(this).closest('div').attr('id').replace('reminder_interval-', '');
-        $.ajax({
-          url: "mail_reminders/update_interval_values",
-          method: "POST",
-          data: {
-            interval: val,
-            mail_reminder_id: reminder
-          }
-        });
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('div[id^="reminder_interval-"] select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var val = this.value;
+      var container = this.closest('div[id^="reminder_interval-"]');
+      var reminderId = container.id.replace('reminder_interval-', '');
+      var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+      fetch('<%= project_update_interval_values_mail_reminders_path(@project) %>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRF-Token': token
+        },
+        body: 'interval=' + encodeURIComponent(val) + '&mail_reminder_id=' + encodeURIComponent(reminderId)
+      })
+      .then(function(response) { return response.text(); })
+      .then(function(html) {
+        var targetId = 'interval_values-' + reminderId;
+        var target = document.getElementById(targetId);
+        if (target) target.outerHTML = html;
       });
     });
-  })( jQuery );
+  });
+});
 </script>
